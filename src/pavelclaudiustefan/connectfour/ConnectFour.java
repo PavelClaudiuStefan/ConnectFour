@@ -65,6 +65,7 @@ class ConnectFour extends JFrame implements Runnable{
         pack();
     }
 
+    //Only displays FPS for now
     private void initStatsFrame() {
         statsFrame = new StatsFrame(this);
         statsFrame.resetLocation();
@@ -84,15 +85,6 @@ class ConnectFour extends JFrame implements Runnable{
         running = true;
     }
 
-    private synchronized void stop() {
-        try {
-            thread.join();
-            running = false;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void run() {
         long lastTime = System.nanoTime();
         double amountOfTicks = 60.0;
@@ -105,12 +97,11 @@ class ConnectFour extends JFrame implements Runnable{
             delta += (now - lastTime) / ns;
             lastTime = now;
             while (delta >= 1) {
-                tick();
                 repaint();
                 delta--;
             }
             if (running)
-                repaint();
+                //repaint();
             frames++;
 
             if (System.currentTimeMillis() - timer > 1000) {
@@ -122,7 +113,13 @@ class ConnectFour extends JFrame implements Runnable{
         stop();
     }
 
-    private void tick() {
-        gameBoard.tick();
+    private synchronized void stop() {
+        try {
+            thread.join();
+            running = false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
+
 }
