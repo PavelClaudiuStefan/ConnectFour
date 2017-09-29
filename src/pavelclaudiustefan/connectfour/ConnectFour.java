@@ -7,11 +7,12 @@ class ConnectFour extends JFrame implements Runnable{
 
     private Thread thread;
     private boolean running;
-    private GameBoard gameBoard;
     private StatsFrame statsFrame;
 
     public ConnectFour() {
         super("Connect Four");
+
+        setResizable(false);
 
         initMenuBar();
         initStartingMenu();
@@ -74,8 +75,7 @@ class ConnectFour extends JFrame implements Runnable{
 
     synchronized void startGame() {
         getContentPane().removeAll();
-        gameBoard = new GameBoard();
-        add(gameBoard);
+        add(new GameBoard());
         revalidate();
         repaint();
         pack();

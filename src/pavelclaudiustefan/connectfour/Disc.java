@@ -1,7 +1,5 @@
 package pavelclaudiustefan.connectfour;
 
-import java.awt.*;
-
 class Disc {
 
     private int playerID;

@@ -11,6 +11,9 @@ import java.awt.geom.Rectangle2D;
 public class GameBoard extends JPanel {
 
     private final static int WIDTH = 350, HEIGHT = 325;
+    private final static int COLUMNS = 7;
+    private final static int ROWS = 6;
+    //TODO - Use ROWS and COLUMNS instead of numbers
     private double yOffset = HEIGHT / 13;
     private double cellHeight = (HEIGHT / 13) * 2;
     private double cellWidth = WIDTH / 7;
@@ -21,28 +24,38 @@ public class GameBoard extends JPanel {
 
     private Disc[][] discs;
     private int[] lowestPosition;
+    private int lastDroppedDiscX;
+    private int lastDroppedDiscY;
+    private int firstX;
+    private int firstY;
+    private int lastX;
+    private int lastY;
 
     private int selectionTriangleColumn;
     private int playerID;
+    private boolean running;
+    private boolean draw;
 
     GameBoard() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         selectionTriangleColumn = 0;
         playerID = 1;
+        running = true;
+        draw = false;
         setBackground(Color.CYAN);
-        initDisc();
+        initDiscs();
         initMouseListener();
     }
 
-    private void initDisc() {
-        discs = new Disc[6][7];
-        for (int y = 0; y < 6; y++) {
-            for (int x = 0; x < 7; x++) {
+    private void initDiscs() {
+        discs = new Disc[ROWS][COLUMNS];
+        for (int y = 0; y < ROWS; y++) {
+            for (int x = 0; x < COLUMNS; x++) {
                 discs[y][x] = new Disc();
             }
         }
         lowestPosition = new int[7];
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < COLUMNS; i++) {
             lowestPosition[i] = 5;
         }
     }
@@ -51,8 +64,19 @@ public class GameBoard extends JPanel {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (isDiscDroppable()) {
-                    dropNewDisc();
+                if (running) {
+                    if (isDiscDroppable()) {
+                        dropNewDisc();
+                        if (isGameOver())
+                            endGame();
+                        else {
+                            playerID *= -1;
+                            //TODO START - TEMPORAR - Random placing of red discs
+                            dropNewDisc();
+                            playerID *= -1;
+                            //TODO END
+                        }
+                    }
                 }
             }
         });
@@ -60,7 +84,7 @@ public class GameBoard extends JPanel {
         addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                selectionTriangleColumn = e.getX() / (WIDTH / 7);
+                selectionTriangleColumn = e.getX() / (WIDTH / COLUMNS);
             }
         });
     }
@@ -70,10 +94,186 @@ public class GameBoard extends JPanel {
     }
 
     private void dropNewDisc() {
-        int y = lowestPosition[selectionTriangleColumn]--;
-        int x = selectionTriangleColumn;
-        discs[y][x].setPlayerID(playerID);
-        playerID *= -1;
+        if (playerID == 1) {
+            lastDroppedDiscY = lowestPosition[selectionTriangleColumn]--;
+            lastDroppedDiscX = selectionTriangleColumn;
+            discs[lastDroppedDiscY][lastDroppedDiscX].setPlayerID(playerID);
+        }
+
+        //TODO START - TEMPORAR - Random placing of red discs
+        if (playerID == -1) {
+            int temp = (int)(Math.random()*100)%7;
+            System.out.println(temp);
+            lastDroppedDiscY = lowestPosition[temp]--;
+            lastDroppedDiscX = temp;
+            discs[lastDroppedDiscY][lastDroppedDiscX].setPlayerID(playerID);
+        }
+        //TODO END
+    }
+
+    private boolean isGameOver() {
+        if (isWinningLineHorizontal())
+            return true;
+
+        if (isWinningLineVertical())
+            return true;
+
+        if (isWinningLineMainDiagonal())
+            return true;
+
+        if (isWinningLineSecondaryDiagonal())
+            return true;
+
+        if (isDraw()) {
+            draw = true;
+            return true;
+        }
+
+
+        return false;
+    }
+
+    private boolean isWinningLineHorizontal() {
+        if (lastDroppedDiscX < 3)
+            firstX = 0;
+        else
+            firstX = lastDroppedDiscX - 3;
+        if (lastDroppedDiscX > 3)
+            lastX = 6;
+        else
+            lastX = lastDroppedDiscX + 3;
+        firstY = lastY = lastDroppedDiscY;
+
+        if (lastX - firstX > 2) {
+            int nrOfDiscs = 0;
+            for (int i = firstX; i <= lastX; i++) {
+                if (discs[lastDroppedDiscY][i].getPlayerID() == playerID) {
+                    nrOfDiscs++;
+                }
+                else if (nrOfDiscs < 4) {
+                    nrOfDiscs = 0;
+                    firstX = i + 1;
+                }
+            }
+            if (nrOfDiscs > 3) {
+                lastX = firstX + nrOfDiscs - 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isWinningLineVertical() {
+        firstX = lastX = lastDroppedDiscX;
+        firstY = lastDroppedDiscY;
+        lastY = firstY + 3;
+
+        if (lastY < 6) {
+            int nrOfDiscs = 0;
+            for (int i = firstY; i <= lastY; i++) {
+                if (discs[i][lastDroppedDiscX].getPlayerID() == playerID) {
+                    nrOfDiscs++;
+                }
+            }
+            if (nrOfDiscs > 3) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isWinningLineMainDiagonal() {
+        if (lastDroppedDiscX > 2 && lastDroppedDiscY > 2) {
+            firstX = lastDroppedDiscX - 3;
+            firstY = lastDroppedDiscY - 3;
+        } else {
+            int offset = Math.min(lastDroppedDiscX, lastDroppedDiscY);
+            firstX = lastDroppedDiscX - offset;
+            firstY = lastDroppedDiscY - offset;
+        }
+        if (lastDroppedDiscX < 4 && lastDroppedDiscY < 3) {
+            lastX = lastDroppedDiscX + 3;
+            lastY = lastDroppedDiscY + 3;
+        } else {
+            int offset = Math.min(6 - lastDroppedDiscX, 5 - lastDroppedDiscY);
+            lastX = lastDroppedDiscX + offset;
+            lastY = lastDroppedDiscY + offset;
+        }
+
+        if (lastX - firstX > 2) {
+            int nrOfDiscs = 0;
+            for (int i = 0; i <= lastX - firstX; i++) {
+                if (discs[firstY+i][firstX+i].getPlayerID() == playerID) {
+                    nrOfDiscs++;
+                } else if (nrOfDiscs < 4) {
+                    nrOfDiscs = 0;
+                    firstX = firstX + i + 1;
+                    firstY = firstY + i + 1;
+                }
+            }
+            if (nrOfDiscs > 3) {
+                lastX = firstX + nrOfDiscs - 1;
+                lastY = firstY + nrOfDiscs - 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isWinningLineSecondaryDiagonal() {
+        if (lastDroppedDiscX > 2 && lastDroppedDiscY < 3) {
+            firstX = lastDroppedDiscX - 3;
+            firstY = lastDroppedDiscY + 3;
+        } else {
+            int offset = Math.min(lastDroppedDiscX, 5 - lastDroppedDiscY);
+            firstX = lastDroppedDiscX - offset;
+            firstY = lastDroppedDiscY + offset;
+        }
+        if (lastDroppedDiscX < 4 && lastDroppedDiscY > 3) {
+            lastX = lastDroppedDiscX + 3;
+            lastY = lastDroppedDiscY - 3;
+        } else {
+            int offset = Math.min(6 - lastDroppedDiscX, lastDroppedDiscY);
+            lastX = lastDroppedDiscX + offset;
+            lastY = lastDroppedDiscY - offset;
+        }
+
+        if (lastX - firstX > 2) {
+            int nrOfDiscs = 0;
+            for (int i = 0; i <= lastX - firstX; i++) {
+                if (discs[firstY-i][firstX+i].getPlayerID() == playerID) {
+                    nrOfDiscs++;
+                } else if (nrOfDiscs < 4) {
+                    nrOfDiscs = 0;
+                    firstX = firstX + i + 1;
+                    firstY = firstY + i - 1;
+                }
+            }
+            if (nrOfDiscs > 3) {
+                lastX = firstX + nrOfDiscs - 1;
+                lastY = firstY - nrOfDiscs + 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isDraw() {
+        //If every cell is filled but there is no winner -> Draw
+        boolean hasNoEmptyCells = true;
+        for (int i = 0; i < COLUMNS; i++) {
+            if (lowestPosition[i] >= 0)
+                hasNoEmptyCells = false;
+        }
+        return hasNoEmptyCells;
+    }
+
+    private void endGame() {
+        running = false;
+        if (draw) {
+            System.out.println("Draw!");
+        } else
+            System.out.println("Player " + playerID + " won!");
     }
 
     @Override
@@ -94,11 +294,14 @@ public class GameBoard extends JPanel {
 
         g2d.setColor(playerColor(playerID));
         drawSelectionTriangle(g2d);
+
+        if (!running)
+            drawWinningRowLine(g2d);
     }
 
     private void drawDiscs(Graphics2D g2d) {
-        for (int y = 0; y < 6; y++) {
-            for (int x = 0; x < 7; x++) {
+        for (int y = 0; y < ROWS; y++) {
+            for (int x = 0; x < COLUMNS; x++) {
                 if (discs[y][x].getPlayerID() != 0) {
                     double discY = y * cellHeight + yOffset + cellPaddingY;
                     double discX = x * cellWidth + cellPaddingX;
@@ -139,6 +342,11 @@ public class GameBoard extends JPanel {
         selectionTriangleBorder.subtract(new Area(new Polygon(new int[] {x1+5, x2-5, x3}, new int[] {2, 2, (int)yOffset - 3}, 3)));
         g2d.setColor(g2d.getColor().darker());
         g2d.fill(selectionTriangleBorder);
+    }
+
+    private void drawWinningRowLine(Graphics2D g2d) {
+        g2d.setColor(Color.BLACK);
+        g2d.drawLine((int)(firstX * cellWidth + (cellWidth / 2)), (int)(firstY * cellHeight + yOffset + (cellHeight / 2)), (int)(lastX * cellWidth + (cellWidth / 2)), (int)(lastY * cellHeight + yOffset + (cellHeight / 2)));
     }
 
     private Color playerColor(int id) {
